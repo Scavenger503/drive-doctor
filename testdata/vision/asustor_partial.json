@@ -1,0 +1,13 @@
+{"kind":"ata","model":"","capacity":"","is_ssd":null,"overall":"","attributes":[
+{"id":1,"name":"Raw_Read_Error_Rate","value":100,"worst":100,"thresh":50,"raw":"0","state":"Normal"},
+{"id":5,"name":"Reallocated_Sector_Ct","value":100,"worst":100,"thresh":50,"raw":"0","state":"Normal"},
+{"id":9,"name":"Power_On_Hours","value":100,"worst":100,"thresh":50,"raw":"2451","state":"Normal"},
+{"id":12,"name":"Power_Cycle_Count","value":100,"worst":100,"thresh":50,"raw":"8","state":"Normal"},
+{"id":175,"name":"Program_Fail_Count_Chip","value":100,"worst":100,"thresh":50,"raw":"0","state":"Normal"},
+{"id":176,"name":"Erase_Fail_Count_Chip","value":100,"worst":100,"thresh":50,"raw":"43662","state":"Normal"},
+{"id":177,"name":"Wear_Leveling_Count","value":100,"worst":100,"thresh":50,"raw":"122333","state":"Normal"},
+{"id":178,"name":"Used_Rsvd_Blk_Cnt_Chip","value":100,"worst":100,"thresh":50,"raw":"1","state":"Normal"},
+{"id":181,"name":"Program_Fail_Cnt_Total","value":100,"worst":100,"thresh":50,"raw":"0","state":"Normal"},
+{"id":182,"name":"Erase_Fail_Count_Total","value":100,"worst":100,"thresh":50,"raw":"0","state":"Normal"},
+{"id":192,"name":"Power-Off_Retract_Count","value":100,"worst":100,"thresh":50,"raw":"3","state":"Normal"}
+],"nvme":{"critical_warning":null,"temperature_c":null,"available_spare":null,"available_spare_threshold":null,"percentage_used":null,"power_on_hours":null,"media_errors":null,"unsafe_shutdowns":null},"self_tests":[]}

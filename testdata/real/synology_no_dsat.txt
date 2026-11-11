@@ -1,0 +1,27 @@
+smartctl 6.5 (build date Sep 26 2022) [x86_64-linux-4.4.302+] (local build)
+Copyright (C) 2002-16, Bruce Allen, Christian Franke, www.smartmontools.org
+
+=== START OF INFORMATION SECTION ===
+Vendor:               WDC
+Product:              WD8002FZBX-00C9H
+Revision:             1A01
+User Capacity:        8,001,563,222,016 bytes [8.00 TB]
+Logical block size:   512 bytes
+Physical block size:  4096 bytes
+LU is fully provisioned
+Rotation Rate:        7200 rpm
+Form Factor:          3.5 inches
+Logical Unit id:      0x50014ee2XXXXXXXX
+Serial number:        WD-TESTSERIAL9
+Device type:          disk
+Local Time is:        Wed Nov 11 00:45:00 2026 -05
+SMART support is:     Unavailable - device lacks SMART capability.
+
+=== START OF READ SMART DATA SECTION ===
+Current Drive Temperature:     0 C
+Drive Trip Temperature:        0 C
+
+Error Counter logging not supported
+
+[GLTSD (Global Logging Target Save Disable) set. Enable Save with '-S on']
+Device does not support Self Test logging

@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drive Doctor</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="Paste a drive health report and get a plain-English verdict: healthy, keep an eye on it, or replace soon.">
+<style>
+  :root {
+    --bg: #000000; --panel: #0b0b10; --panel-2: #13131a; --line: #26262f;
+    --text: #ececf1; --muted: #9a9aab; --accent: #a78bfa; --accent-ink: #12082b;
+    --ok: #3fb67b; --ok-bg: rgba(63,182,123,.12);
+    --warn: #e0a83a; --warn-bg: rgba(224,168,58,.12);
+    --bad: #ef5b5b; --bad-bg: rgba(239,91,91,.12);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --line: #dde1e7;
+      --text: #161b22; --muted: #5b6573; --accent: #6d4bd8; --accent-ink: #ffffff;
+      --ok-bg: rgba(63,182,123,.14); --warn-bg: rgba(224,168,58,.16); --bad-bg: rgba(239,91,91,.12);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 28px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 40px; height: 40px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line);
+    display: grid; place-items: center; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+  .tag { color: var(--muted); font-size: 14px; margin: 0; }
+  .lang { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .lang button { background: none; border: 0; color: var(--muted); padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+  .lang button[aria-pressed="true"] { background: var(--panel-2); color: var(--text); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+  label { font-weight: 600; display: block; margin-bottom: 8px; }
+  textarea { width: 100%; min-height: 220px; resize: vertical; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 10px; padding: 12px; font: 13px/1.45 var(--mono); }
+  textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+  .primary { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 10px 18px;
+    font: inherit; font-weight: 650; cursor: pointer; }
+  .primary:disabled { opacity: .6; cursor: wait; }
+  .chip { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 999px;
+    padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .chip:hover { color: var(--text); border-color: var(--muted); }
+  .hint { color: var(--muted); font-size: 13px; }
+  details { margin-top: 14px; color: var(--muted); font-size: 14px; }
+  details summary { cursor: pointer; }
+  code { font-family: var(--mono); font-size: 13px; background: var(--panel-2); padding: 1px 6px; border-radius: 5px; }
+  #result { margin-top: 20px; }
+  .verdict { border-radius: 14px; padding: 20px; border: 1px solid var(--line); }
+  .verdict.healthy { background: var(--ok-bg); border-color: var(--ok); }
+  .verdict.watch { background: var(--warn-bg); border-color: var(--warn); }
+  .verdict.replace { background: var(--bad-bg); border-color: var(--bad); }
+  .verdict.partial { border-style: dashed; background: transparent; }
+  .badge { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 20px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .healthy .dot { background: var(--ok); } .watch .dot { background: var(--warn); } .replace .dot { background: var(--bad); }
+  .drive { color: var(--muted); font-size: 14px; margin: 4px 0 14px; }
+  .explain { font-size: 16.5px; margin: 0; }
+  .meta { color: var(--muted); font-size: 12.5px; margin-top: 12px; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 24px 0 10px; }
+  .finding { display: grid; grid-template-columns: 10px 1fr auto; gap: 12px; align-items: start;
+    padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; }
+  .finding .dot { margin-top: 7px; }
+  .finding.l-healthy .dot { background: var(--ok); } .finding.l-watch .dot { background: var(--warn); } .finding.l-replace .dot { background: var(--bad); }
+  .finding b { display: block; }
+  .finding p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .val { font-family: var(--mono); font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .notes { color: var(--muted); font-size: 14px; padding-left: 18px; margin: 0; }
+  .error { color: var(--bad); margin-top: 12px; }
+  .tabs { display: flex; gap: 4px; margin: -4px 0 16px; border-bottom: 1px solid var(--line); }
+  .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted);
+    font: inherit; font-weight: 600; padding: 8px 12px 10px; cursor: pointer; margin-bottom: -1px; }
+  .tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+  .drop { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; cursor: pointer;
+    border: 1.5px dashed var(--line); border-radius: 12px; padding: 28px 16px; color: var(--muted); font-weight: 400; margin: 0; }
+  .drop b { color: var(--text); font-weight: 600; }
+  .drop span { font-size: 13.5px; max-width: 460px; }
+  .drop:hover, .drop.over { border-color: var(--accent); color: var(--accent); }
+  .drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .thumbs { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .thumbs:empty { display: none; }
+  .thumb { position: relative; width: 96px; height: 72px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--panel-2); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb button { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; border: 0;
+    background: rgba(0,0,0,.75); color: #fff; font-size: 14px; line-height: 22px; cursor: pointer; padding: 0; }
+  .where { margin: 8px 0 0; padding-left: 18px; }
+  .where li { margin: 4px 0; }
+  .missing { margin-top: 14px; padding: 12px 14px; border-radius: 10px; border: 1px dashed var(--warn); background: var(--warn-bg); font-size: 14.5px; }
+  .missing ul { margin: 6px 0 10px; padding-left: 18px; }
+  .missing .chip { color: var(--text); border-color: var(--warn); }
+  .skeleton span { display: block; height: 14px; border-radius: 7px; margin: 10px 0; opacity: .5;
+    background: linear-gradient(90deg, var(--line) 25%, var(--panel-2) 50%, var(--line) 75%); background-size: 200% 100%;
+    animation: shimmer 1.3s infinite linear; }
+  .skeleton span:nth-child(2) { width: 92%; } .skeleton span:nth-child(3) { width: 64%; }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  @media (prefers-reduced-motion: reduce) { .skeleton span { animation: none; } }
+  .disclaimer { margin: 22px 0 0; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+  footer { margin-top: 36px; color: var(--muted); font-size: 13px; text-align: center; }
+  @media (max-width: 560px) {
+    .finding { grid-template-columns: 10px 1fr; } .val { grid-column: 2; }
+    header { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="12" width="36" height="28" rx="4"/>
+          <path d="M11 27h6l3-6 4 12 3-6h10" stroke="var(--text)"/>
+          <circle cx="36" cy="34.5" r="1.4" fill="var(--accent)"/>
+          <path d="M16 12V9c0-2 2-3 4-3M32 12V9c0-2-2-3-4-3"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Drive Doctor</h1>
+        <p class="tag" data-i18n="tagline">Is your drive about to die? Get a plain-English answer.</p>
+      </div>
+    </div>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="es" aria-pressed="false">ES</button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-shot" aria-controls="pane-shot" aria-selected="true" data-i18n="tabShot">Upload screenshots</button>
+      <button type="button" role="tab" id="tab-paste" aria-controls="pane-paste" aria-selected="false" data-i18n="tabPaste">Paste a report</button>
+    </div>
+
+    <div id="pane-shot" role="tabpanel" aria-labelledby="tab-shot">
+      <label for="files" class="drop" id="drop">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>
+        <b data-i18n="dropTitle">Drop screenshots here, paste them, or click to choose</b>
+        <span data-i18n="dropHint">The drive's S.M.A.R.T. page from your NAS (Synology, UGREEN, Asustor, QNAP…) or CrystalDiskInfo. Up to 4 images.</span>
+        <input type="file" id="files" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+      </label>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="row">
+        <button class="primary" id="goShot" type="button" data-i18n="checkShots" disabled>Check screenshots</button>
+        <span class="hint" data-i18n="shotPrivacy">Screenshots are read by an AI model. Crop out serial numbers if you can.</span>
+      </div>
+      <details>
+        <summary data-i18n="whereSummary">Where do I find this page?</summary>
+        <ul class="where">
+          <li data-i18n="whereSyn"><b>Synology DSM:</b> Storage Manager › HDD/SSD › select the drive › Health Info</li>
+          <li data-i18n="whereUg"><b>UGREEN UGOS:</b> Storage › Hard drive › select the drive › S.M.A.R.T. information</li>
+          <li data-i18n="whereAs"><b>Asustor ADM:</b> Storage Manager › Disk › select the drive › S.M.A.R.T. Info</li>
+          <li data-i18n="whereWin"><b>Windows:</b> the free CrystalDiskInfo app</li>
+          <li data-i18n="whereTip">If the table scrolls, take a second screenshot of the rest. They're read together.</li>
+        </ul>
+      </details>
+    </div>
+
+    <div id="pane-paste" role="tabpanel" aria-labelledby="tab-paste" hidden>
+      <label for="report" data-i18n="pasteLabel">Paste your drive's health report</label>
+      <textarea id="report" spellcheck="false" placeholder="smartctl 7.3 ...&#10;=== START OF INFORMATION SECTION ===&#10;Device Model: ..."></textarea>
+      <div class="row">
+        <button class="primary" id="go" type="button" data-i18n="check">Check my drive</button>
+        <span class="hint" data-i18n="try">Or try a sample:</span>
+        <button class="chip" type="button" data-sample="healthy" data-i18n="sHealthy">Healthy drive</button>
+        <button class="chip" type="button" data-sample="cable" data-i18n="sCable">Cable problem</button>
+        <button class="chip" type="button" data-sample="failing" data-i18n="sFailing">Failing drive</button>
+        <button class="chip" type="button" data-sample="ssd-worn" data-i18n="sSSD">Worn-out SSD</button>
+      </div>
+      <details>
+        <summary data-i18n="howSummary">How do I get this report?</summary>
+        <p data-i18n="howLinux">On Linux, a NAS, or a Mac with smartmontools installed, run <code>sudo smartctl -a /dev/sda</code> (change <code>sda</code> to your drive) and paste everything it prints. On Synology, use <code>sudo smartctl -a -d sat /dev/sata1</code>.</p>
+        <p data-i18n="howPrivacy">Serial numbers and drive IDs are removed before anything is analyzed.</p>
+      </details>
+    </div>
+    <div class="error" id="error" role="alert" hidden></div>
+  </section>
+
+  <section id="result" aria-live="polite"></section>
+
+  <footer data-i18n="footer">Verdicts come from fixed health rules. Explanations are written by open AI models running on AMD GPUs through AMD Token Lab. Always keep a backup.</footer>
+</div>
+
+<script>
+const T = {
+  en: {
+    tagline: "Is your drive about to die? Get a plain-English answer.",
+    pasteLabel: "Paste your drive's health report", check: "Check my drive", checking: "Checking…",
+    try: "Or try a sample:", sHealthy: "Healthy drive", sCable: "Cable problem", sFailing: "Failing drive", sSSD: "Worn-out SSD",
+    howSummary: "How do I get this report?",
+    howLinux: 'On Linux, a NAS, or a Mac with smartmontools installed, run <code>sudo smartctl -a /dev/sda</code> (change <code>sda</code> to your drive) and paste everything it prints. On Synology, use <code>sudo smartctl -a -d sat /dev/sata1</code>.',
+    howPrivacy: "Serial numbers and drive IDs are removed before anything is analyzed.",
+    footer: "Verdicts come from fixed health rules. Explanations are written by open AI models running on AMD GPUs through AMD Token Lab. Always keep a backup.",
+    healthy: "Healthy", watch: "Keep an eye on it", replace: "Replace soon",
+    findings: "What we found", notes: "Other details", noFindings: "No warning signs found.",
+    explainedBy: (m, s) => `Explained by ${m} in ${s}s`, fallback: "AI explanation unavailable, showing a basic summary.",
+    empty: "Paste a report first, or try one of the samples.", netErr: "Couldn't reach the server. Try again.",
+    limit: (u, l) => `${u} of ${l} AI checks used today`,
+    writing: "Writing a plain-English explanation…", noExplain: "Couldn't get an explanation right now. The verdict and findings above still apply.",
+    recheck: "click Check again for this language",
+    tabShot: "Upload screenshots", tabPaste: "Paste a report",
+    dropTitle: "Drop screenshots here, paste them, or click to choose",
+    dropHint: "The drive's S.M.A.R.T. page from your NAS (Synology, UGREEN, Asustor, QNAP…) or CrystalDiskInfo. Up to 4 images.",
+    checkShots: "Check screenshots", reading: "Reading screenshots…",
+    shotPrivacy: "Screenshots are read by an AI model. Crop out serial numbers if you can.",
+    whereSummary: "Where do I find this page?",
+    whereSyn: "<b>Synology DSM:</b> Storage Manager › HDD/SSD › select the drive › Health Info",
+    whereUg: "<b>UGREEN UGOS:</b> Storage › Hard drive › select the drive › S.M.A.R.T. information",
+    whereAs: "<b>Asustor ADM:</b> Storage Manager › Disk › select the drive › S.M.A.R.T. Info",
+    whereWin: "<b>Windows:</b> the free CrystalDiskInfo app",
+    whereTip: "If the table scrolls, take a second screenshot of the rest. They're read together.",
+    okSoFar: "Looks OK so far",
+    missingTitle: "Some important values weren't visible, so this check isn't complete:",
+    disclaimer: "Drive Doctor gives guidance based on the health data your drive reports about itself. It isn't a guarantee: drives can fail without warning, even with perfect health data. Keep a backup of anything you can't afford to lose.",
+    addShot: "Add another screenshot", pasteInstead: "Paste a report instead",
+    missingHelp: "If the table scrolls, add a screenshot of the rest. Some NAS pages never show these values (UGREEN skips them for SSDs, for example). In that case, a pasted smartctl report gives the complete check: <code>sudo smartctl -a /dev/nvme0</code> for an SSD.", tooMany: "You can add up to 4 screenshots.", notImage: "Only image files can be added.",
+    readBy: (m) => `Values read by ${m}`, checkedBy: (m) => `, double-checked by ${m}`,
+    unreadable: " (couldn't be read reliably, so it was left out)",
+  },
+  es: {
+    tagline: "¿Tu disco está por fallar? Recibe una respuesta clara.",
+    pasteLabel: "Pega el informe de salud de tu disco", check: "Revisar mi disco", checking: "Revisando…",
+    try: "O prueba un ejemplo:", sHealthy: "Disco sano", sCable: "Problema de cable", sFailing: "Disco fallando", sSSD: "SSD desgastado",
+    howSummary: "¿Cómo obtengo este informe?",
+    howLinux: 'En Linux, un NAS o una Mac con smartmontools instalado, ejecuta <code>sudo smartctl -a /dev/sda</code> (cambia <code>sda</code> por tu disco) y pega todo lo que muestre. En Synology, usa <code>sudo smartctl -a -d sat /dev/sata1</code>.',
+    howPrivacy: "Los números de serie e identificadores del disco se eliminan antes de analizar nada.",
+    footer: "Los veredictos vienen de reglas de salud fijas. Las explicaciones las escriben modelos de IA abiertos en GPUs AMD mediante AMD Token Lab. Siempre ten una copia de seguridad.",
+    healthy: "Sano", watch: "Vigílalo", replace: "Reemplázalo pronto",
+    findings: "Lo que encontramos", notes: "Otros detalles", noFindings: "No se encontraron señales de advertencia.",
+    explainedBy: (m, s) => `Explicado por ${m} en ${s}s`, fallback: "Explicación con IA no disponible; mostrando un resumen básico.",
+    empty: "Primero pega un informe o prueba uno de los ejemplos.", netErr: "No se pudo conectar con el servidor. Inténtalo de nuevo.",
+    limit: (u, l) => `${u} de ${l} revisiones con IA usadas hoy`,
+    writing: "Escribiendo una explicación clara…", noExplain: "No se pudo obtener una explicación ahora. El veredicto y los hallazgos siguen siendo válidos.",
+    recheck: "pulsa Revisar de nuevo para este idioma",
+    tabShot: "Subir capturas", tabPaste: "Pegar un informe",
+    dropTitle: "Suelta capturas aquí, pégalas o haz clic para elegir",
+    dropHint: "La página S.M.A.R.T. del disco en tu NAS (Synology, UGREEN, Asustor, QNAP…) o CrystalDiskInfo. Hasta 4 imágenes.",
+    checkShots: "Revisar capturas", reading: "Leyendo capturas…",
+    shotPrivacy: "Las capturas las lee un modelo de IA. Si puedes, recorta los números de serie.",
+    whereSummary: "¿Dónde encuentro esta página?",
+    whereSyn: "<b>Synology DSM:</b> Administrador de almacenamiento › HDD/SSD › elige el disco › Información de salud",
+    whereUg: "<b>UGREEN UGOS:</b> Almacenamiento › Disco duro › elige el disco › Información S.M.A.R.T.",
+    whereAs: "<b>Asustor ADM:</b> Administrador de almacenamiento › Disco › elige el disco › Info S.M.A.R.T.",
+    whereWin: "<b>Windows:</b> la app gratuita CrystalDiskInfo",
+    whereTip: "Si la tabla tiene desplazamiento, toma otra captura del resto. Se leen juntas.",
+    okSoFar: "Bien hasta ahora",
+    missingTitle: "No se vieron algunos valores importantes, así que la revisión no está completa:",
+    disclaimer: "Drive Doctor da orientación según los datos de salud que el propio disco reporta. No es una garantía: un disco puede fallar sin aviso, aun con datos perfectos. Ten una copia de seguridad de todo lo que no puedas perder.",
+    addShot: "Agregar otra captura", pasteInstead: "Mejor pegar un informe",
+    missingHelp: "Si la tabla tiene desplazamiento, agrega una captura del resto. Algunas páginas de NAS nunca muestran estos valores (UGREEN los omite en los SSD, por ejemplo). En ese caso, pegar un informe de smartctl da la revisión completa: <code>sudo smartctl -a /dev/nvme0</code> para un SSD.", tooMany: "Puedes agregar hasta 4 capturas.", notImage: "Solo se pueden agregar imágenes.",
+    readBy: (m) => `Valores leídos por ${m}`, checkedBy: (m) => `, verificados por ${m}`,
+    unreadable: " (no se pudo leer con seguridad, así que se omitió)",
+  },
+};
+let lang = "en";
+try { const s = localStorage.getItem("dd-lang"); if (s === "es") lang = "es"; } catch (_) {}
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let last = null;
+
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const v = T[lang][el.dataset.i18n];
+    if (typeof v === "string") el.innerHTML = v;
+  });
+  document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+  if (last) render(last);
+}
+
+document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => {
+  lang = b.dataset.lang;
+  try { localStorage.setItem("dd-lang", lang); } catch (_) {}
+  applyLang();
+}));
+
+document.querySelectorAll("[data-sample]").forEach((b) => b.addEventListener("click", async () => {
+  const r = await fetch(`samples/${b.dataset.sample}.txt`);
+  $("#report").value = await r.text();
+  check();
+}));
+
+$("#go").addEventListener("click", check);
+
+// Spanish text for each finding/note code (English comes from the server).
+const ES = {
+  overall_failed: ["La prueba de salud del propio disco falló", "El disco mismo informa que no pasó su evaluación de salud interna."],
+  self_test_failed: ["Falló una autoprueba del disco", "Una autoprueba registrada en el disco no terminó bien, lo que suele indicar zonas ilegibles."],
+  attr_below_threshold: ["Un valor de salud cruzó el límite de falla", "Un valor de salud bajó al nivel que el fabricante considera una falla."],
+  attr_failed_past: ["Un valor de salud cruzó el límite en el pasado", "Un valor de salud estuvo en nivel de falla en algún momento, aunque ahora está por encima del límite."],
+  reallocated_sectors: ["Zonas dañadas ya reemplazadas", "El disco encontró zonas dañadas y las cambió por zonas de reserva. Los discos con esto tienen más probabilidad de fallar, y si el número sigue subiendo es una clara advertencia."],
+  pending_sectors: ["Zonas que el disco no puede leer ahora", "Algunas zonas del disco no se pudieron leer y están pendientes de revisión. Los archivos guardados ahí podrían estar dañados."],
+  uncorrectable_sectors: ["Zonas que no se pudieron reparar", "El disco encontró zonas que no pudo leer ni corregir durante sus propias revisiones."],
+  reported_uncorrect: ["Errores de lectura que el disco no pudo corregir", "El disco devolvió datos que no pudo corregir. Esto suele aparecer antes de fallas más serias."],
+  realloc_events: ["Reparaciones registradas", "El disco ha tenido que mover datos fuera de zonas dañadas."],
+  spin_retry: ["Problemas al arrancar el giro", "El disco necesitó más de un intento para empezar a girar, lo que puede indicar un problema de motor o de energía."],
+  crc_errors: ["Errores de conexión (normalmente el cable)", "Los datos se dañaron entre el disco y el equipo. Casi siempre es un cable o una ranura floja o en mal estado, no el disco. Si el número sigue subiendo, reconecta o cambia el cable."],
+  ssd_worn: ["El SSD está casi agotado", "El SSD ya usó casi toda su vida útil de escritura."],
+  ssd_wearing: ["El SSD se está desgastando", "El SSD ya usó la mayor parte de su vida útil de escritura. Planea reemplazarlo."],
+  nvme_critical_warning: ["El SSD emitió una advertencia crítica", "El propio SSD está señalando un problema serio (espacio de reserva, temperatura, confiabilidad o modo de solo lectura)."],
+  nvme_spare_low: ["Al SSD se le acabó el espacio de reserva", "El SSD gastó la reserva que usa para reemplazar celdas desgastadas."],
+  nvme_media_errors: ["Errores de datos que el SSD no pudo corregir", "El SSD encontró datos que no pudo leer correctamente."],
+  temp_high: ["Funciona muy caliente", "El disco está más caliente de lo recomendado. El calor acorta su vida, así que revisa ventiladores y ventilación."],
+  old_drive: ["Disco con varios años de uso", "El disco lleva funcionando más de seis años. Los discos viejos fallan más seguido aunque todo lo demás se vea bien, así que asegúrate de tener copia de seguridad."],
+  ata_errors: ["Errores en el registro del disco", "El disco registró errores de lectura o escritura. Unos pocos y antiguos pueden ser inofensivos; muchos o recientes son una señal de alerta."],
+  unconfirmed: "Las advertencias de arriba no se pudieron verificar con una segunda lectura. Pegar el informe de smartctl da el resultado más confiable.",
+  bad_thresholds: "No se pudieron leer los límites de advertencia del disco, algo común e inofensivo en algunos discos. Todas las demás revisiones se hicieron con normalidad.",
+};
+
+const MISSING_ES = {
+  "bad spots already replaced (ID 5)": "zonas dañadas ya reemplazadas (ID 5)",
+  "areas the drive can't read (ID 197)": "zonas que el disco no puede leer (ID 197)",
+  "areas that couldn't be repaired (ID 198)": "zonas que no se pudieron reparar (ID 198)",
+  "critical warning": "advertencia crítica",
+  "percentage of lifetime used": "porcentaje de vida útil usado",
+  "available spare": "espacio de reserva disponible",
+  "media and data integrity errors": "errores de datos e integridad",
+  "the drive's health values (the S.M.A.R.T. attributes table)": "los valores de salud del disco (la tabla de atributos S.M.A.R.T.)",
+};
+
+// ---- Tabs ----
+function setTab(name) {
+  for (const t of ["shot", "paste"]) {
+    $("#tab-" + t).setAttribute("aria-selected", String(t === name));
+    $("#pane-" + t).hidden = t !== name;
+  }
+  $("#error").hidden = true;
+}
+$("#tab-shot").addEventListener("click", () => setTab("shot"));
+$("#tab-paste").addEventListener("click", () => setTab("paste"));
+
+// ---- Screenshots ----
+let shots = []; // {file, url}
+function showErr(msg) { const e = $("#error"); e.textContent = msg; e.hidden = false; }
+function addFiles(list) {
+  $("#error").hidden = true;
+  for (const f of list) {
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)) { showErr(T[lang].notImage); continue; }
+    if (shots.length >= 4) { showErr(T[lang].tooMany); break; }
+    shots.push({ file: f, url: URL.createObjectURL(f) });
+  }
+  drawThumbs();
+}
+function drawThumbs() {
+  $("#thumbs").innerHTML = shots.map((s, i) =>
+    `<div class="thumb"><img src="${s.url}" alt=""><button type="button" data-rm="${i}" aria-label="Remove">×</button></div>`).join("");
+  $("#goShot").disabled = shots.length === 0;
+}
+$("#thumbs").addEventListener("click", (e) => {
+  const i = e.target.dataset.rm;
+  if (i === undefined) return;
+  URL.revokeObjectURL(shots[i].url);
+  shots.splice(Number(i), 1);
+  drawThumbs();
+});
+$("#files").addEventListener("change", (e) => { addFiles(e.target.files); e.target.value = ""; });
+const drop = $("#drop");
+["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", (e) => addFiles(e.dataTransfer.files));
+document.addEventListener("paste", (e) => {
+  const imgs = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith("image/"));
+  if (!imgs.length) return;
+  e.preventDefault(); setTab("shot"); addFiles(imgs);
+});
+$("#goShot").addEventListener("click", checkShots);
+
+async function checkShots() {
+  if (!shots.length) return;
+  const id = ++reqId, btn = $("#goShot");
+  $("#error").hidden = true;
+  btn.disabled = true; btn.textContent = T[lang].reading;
+  try {
+    const fd = new FormData();
+    shots.forEach((s) => fd.append("images", s.file));
+    fd.append("lang", lang);
+    const r = await fetch("api/screenshot", { method: "POST", body: fd });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || T[lang].netErr);
+    if (id !== reqId) return;
+    data.pending = true; last = data; render(data);
+    $("#result").scrollIntoView({ behavior: "smooth", block: "start" });
+    btn.disabled = false; btn.textContent = T[lang].checkShots;
+    const exp = await post("api/explain", { result_id: data.result_id, lang }).catch(() => null);
+    if (id !== reqId) return;
+    data.pending = false;
+    data.explanation = exp ? exp.explanation : null;
+    data.explainLang = lang;
+    render(data);
+  } catch (e) {
+    if (id !== reqId) return;
+    showErr(e.message || T[lang].netErr);
+  } finally {
+    if (id === reqId) { btn.disabled = shots.length === 0; btn.textContent = T[lang].checkShots; }
+  }
+}
+
+function ageText(h) {
+  const y = h / 8766;
+  if (lang === "es") return y >= 1 ? `${h} horas (unos ${y.toFixed(1)} años)` : `${h} horas (unos ${Math.floor(h / 24)} días)`;
+  return y >= 1 ? `${h} hours (about ${y.toFixed(1)} years)` : `${h} hours (about ${Math.floor(h / 24)} days)`;
+}
+
+function noteText(n) {
+  if (n.code === "temperature") return (lang === "es" ? "Temperatura: " : "Temperature: ") + n.value + "°C";
+  if (n.code === "lifetime_used") return (lang === "es" ? "Vida útil usada: " : "Rated lifetime used: ") + n.value + "%";
+  if (n.code === "spare_left") return (lang === "es" ? "Espacio de reserva restante: " : "Spare space left: ") + n.value + "%";
+  if (n.code === "power_on_hours") return (lang === "es" ? "Encendido durante " : "Powered on for ") + ageText(n.value);
+  if (lang === "es" && n.code === "old_errors") return (n.value === 1 ? "1 error antiguo en el registro del disco, sin errores nuevos desde entonces, así que no es motivo de preocupación." : `${n.value} errores antiguos en el registro del disco, sin errores nuevos desde entonces, así que no son motivo de preocupación.`);
+  if (lang === "es" && typeof ES[n.code] === "string") return ES[n.code];
+  return n.text;
+}
+
+function valueText(v) {
+  if (lang !== "es") return v;
+  return String(v).replace("life left", "de vida restante").replace(" used", " usado").replace("limit", "límite")
+    .replace("Extended test", "Prueba extendida").replace("Short test", "Prueba corta").replace("read failure", "falla de lectura")
+    .replace(/hours \(about ([\d.]+) years\)/, "horas (unos $1 años)").replace(/hours \(about (\d+) days\)/, "horas (unos $1 días)");
+}
+
+let reqId = 0;
+
+async function post(path, body) {
+  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || T[lang].netErr);
+  return data;
+}
+
+async function check() {
+  const report = $("#report").value.trim();
+  const err = $("#error");
+  err.hidden = true;
+  if (!report) { err.textContent = T[lang].empty; err.hidden = false; return; }
+  const id = ++reqId;
+  const btn = $("#go");
+  btn.disabled = true; btn.textContent = T[lang].checking;
+  try {
+    // 1) Instant rule-based verdict.
+    const data = await post("api/check", { report, lang });
+    if (id !== reqId) return;
+    data.pending = true;
+    last = data; render(data);
+    $("#result").scrollIntoView({ behavior: "smooth", block: "start" });
+    btn.disabled = false; btn.textContent = T[lang].check;
+    // 2) AI explanation fills in when ready.
+    const exp = await post("api/explain", { report, lang }).catch(() => null);
+    if (id !== reqId) return;
+    data.pending = false;
+    data.explanation = exp ? exp.explanation : null;
+    data.limit = exp ? exp.limit : null;
+    data.explainLang = lang;
+    render(data);
+  } catch (e) {
+    if (id !== reqId) return;
+    err.textContent = e.message || T[lang].netErr; err.hidden = false; $("#result").innerHTML = ""; last = null;
+  } finally {
+    if (id === reqId) { btn.disabled = false; btn.textContent = T[lang].check; }
+  }
+}
+
+function render(d) {
+  const t = T[lang], lvl = d.verdict.level;
+  const unconf = (d.verdict.unconfirmed || []).map((f) =>
+    (lang === "es" && Array.isArray(ES[f.code]) ? ES[f.code][0] : f.title) + t.unreadable);
+  const incomplete = (d.verdict.incomplete || []).map((m) => lang === "es" ? (MISSING_ES[m] || m) : m).concat(unconf);
+  const label = lvl === "healthy" && incomplete.length ? t.okSoFar : t[lvl];
+  const drive = [d.drive.model, d.drive.capacity, d.drive.type].filter(Boolean).map(esc).join(" · ");
+  let body;
+  if (d.pending) {
+    body = `<div class="skeleton" aria-label="${t.writing}"><span></span><span></span><span></span></div>
+      <p class="meta">${t.writing}</p>`;
+  } else {
+    const ex = d.explanation;
+    const text = ex ? esc(ex.text) : t.noExplain;
+    const meta = !ex || ex.fallback ? t.fallback : t.explainedBy(esc(ex.model), ex.seconds);
+    const stale = ex && d.explainLang && d.explainLang !== lang ? ` · ${t.recheck}` : "";
+    body = `<p class="explain">${text}</p>
+      <p class="meta">${d.read_by ? t.readBy(esc(d.read_by)) + (d.confirmed_by ? t.checkedBy(esc(d.confirmed_by)) : "") + " · " : ""}${meta}${d.limit ? " · " + t.limit(d.limit.used, d.limit.limit) : ""}${stale}</p>`;
+  }
+  const findings = (d.verdict.findings || []).map((f) => {
+    const es = lang === "es" && Array.isArray(ES[f.code]);
+    return `
+    <div class="finding l-${f.level}">
+      <span class="dot"></span>
+      <div><b>${esc(es ? ES[f.code][0] : f.title)}</b><p>${esc(es ? ES[f.code][1] : f.detail)}</p></div>
+      <span class="val">${esc(valueText(f.value))}</span>
+    </div>`;
+  }).join("") || `<p class="hint">${t.noFindings}</p>`;
+  const notes = (d.verdict.notes || []).map((n) => `<li>${esc(noteText(n))}</li>`).join("");
+  $("#result").innerHTML = `
+    <div class="verdict ${lvl}${lvl === "healthy" && incomplete.length ? " partial" : ""}">
+      <div class="badge"><span class="dot"></span>${label}</div>
+      <p class="drive">${drive}</p>
+      ${body}
+    </div>
+    ${incomplete.length ? `<div class="missing"><b>${t.missingTitle}</b><ul>${incomplete.map((m) => `<li>${esc(m)}</li>`).join("")}</ul><p class="hint" style="margin:0 0 10px">${t.missingHelp}</p><div class="row" style="margin:0"><button class="chip" type="button" id="addMore">${t.addShot}</button><button class="chip" type="button" id="toPaste">${t.pasteInstead}</button></div></div>` : ""}
+    <h2>${t.findings}</h2>${findings}
+    ${notes ? `<h2>${t.notes}</h2><ul class="notes">${notes}</ul>` : ""}
+    <p class="disclaimer">${t.disclaimer}</p>`;
+  const more = $("#addMore");
+  if (more) more.addEventListener("click", () => { setTab("shot"); $("#files").click(); });
+  const toPaste = $("#toPaste");
+  if (toPaste) toPaste.addEventListener("click", () => { setTab("paste"); $("#pane-paste details").open = true; $("#report").focus(); });
+}
+
+applyLang();
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+services:
+  drive-doctor:
+    build: .
+    image: drive-doctor:latest
+    container_name: drive-doctor
+    restart: unless-stopped
+    ports:
+      - "8099:8080"
+    env_file: .env
+    environment:
+      DD_DATA_DIR: /data
+    volumes:
+      # Daily limit counts (hashed, no raw IPs). Create it first:
+      #   mkdir -p data && sudo chown 65532:65532 data
+      - ./data:/data
+    read_only: true
+    security_opt:
+      - no-new-privileges:true

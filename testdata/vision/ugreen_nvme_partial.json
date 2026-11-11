@@ -1,0 +1,3 @@
+{"kind":"nvme","model":"","capacity":"","is_ssd":true,"overall":"","attributes":[],
+"nvme":{"critical_warning":null,"temperature_c":33,"available_spare":100,"available_spare_threshold":10,"percentage_used":3,"power_on_hours":null,"media_errors":null,"unsafe_shutdowns":null,
+"labels":{"temperature_c":"Temperature","available_spare":"Available spare space","available_spare_threshold":"Available spare threshold","percentage_used":"Percentage of rated lifetime used"}},"self_tests":[]}

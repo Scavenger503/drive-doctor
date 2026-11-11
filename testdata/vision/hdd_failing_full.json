@@ -1,0 +1,7 @@
+{"kind":"ata","model":"ST2000DM008","capacity":"2 TB","is_ssd":false,"overall":"","attributes":[
+{"id":5,"name":"Reallocated_Sector_Ct","value":88,"worst":88,"thresh":10,"raw":"1904","state":"Normal"},
+{"id":9,"name":"Power_On_Hours","value":52,"worst":52,"thresh":0,"raw":"42193","state":"Normal"},
+{"id":194,"name":"Temperature_Celsius","value":39,"worst":55,"thresh":0,"raw":"39","state":"Normal"},
+{"id":197,"name":"Current_Pending_Sector","value":100,"worst":100,"thresh":0,"raw":"24","state":"Normal"},
+{"id":198,"name":"Offline_Uncorrectable","value":100,"worst":100,"thresh":0,"raw":"24","state":"Normal"}
+],"nvme":{},"self_tests":[]}

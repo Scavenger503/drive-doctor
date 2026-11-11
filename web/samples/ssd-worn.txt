@@ -1,0 +1,19 @@
+=== START OF INFORMATION SECTION ===
+Model Number:                       WD Blue SN570 500GB
+Serial Number:                      22123A801234
+Firmware Version:                   234110WD
+Total NVM Capacity:                 500,107,862,016 [500 GB]
+
+=== START OF SMART DATA SECTION ===
+SMART overall-health self-assessment test result: FAILED!
+- available spare has fallen below threshold
+
+SMART/Health Information (NVMe Log 0x02)
+Critical Warning:                   0x01
+Temperature:                        52 Celsius
+Available Spare:                    6%
+Available Spare Threshold:          10%
+Percentage Used:                    97%
+Power On Hours:                     19,880
+Media and Data Integrity Errors:    3
+Error Information Log Entries:      44

@@ -1,0 +1,5 @@
+```json
+{"kind":"self_tests_only","model":"","capacity":"","is_ssd":null,"overall":"","attributes":[],
+"nvme":{"critical_warning":null,"temperature_c":null,"available_spare":null,"available_spare_threshold":null,"percentage_used":null,"power_on_hours":null,"media_errors":null,"unsafe_shutdowns":null},
+"self_tests":[{"type":"S.M.A.R.T. Extended Test","result":"Healthy","failed":false},{"type":"S.M.A.R.T. Extended Test","result":"Healthy","failed":false}]}
+```
